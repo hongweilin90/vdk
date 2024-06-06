@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/deepch/vdk/av"
+	"github.com/hongweilin90/vdk/av"
 )
 
 type CodecData struct {

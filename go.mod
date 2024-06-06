@@ -1,4 +1,4 @@
-module github.com/deepch/vdk
+module github.com/hongweilin90/vdk
 
 go 1.18
 

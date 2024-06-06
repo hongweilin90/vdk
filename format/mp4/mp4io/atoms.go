@@ -3,7 +3,7 @@ package mp4io
 import (
 	"time"
 
-	"github.com/deepch/vdk/utils/bits/pio"
+	"github.com/hongweilin90/vdk/utils/bits/pio"
 )
 
 const MOOF = Tag(0x6d6f6f66)
@@ -24,17 +24,18 @@ func (self AVC1Desc) Tag() Tag {
 	return AVC1
 }
 
-//0x31766568
+// 0x31766568
 const HEV1 = Tag(0x68766331)
 
 func (self HV1Desc) Tag() Tag {
 	return HEV1
 }
 
-//const HVC1 = Tag(0x68766331)
-//func (self HVC1Desc) Tag() Tag {
-//	return HVC1
-//}
+// const HVC1 = Tag(0x68766331)
+//
+//	func (self HVC1Desc) Tag() Tag {
+//		return HVC1
+//	}
 const URL = Tag(0x75726c20)
 
 func (self DataReferUrl) Tag() Tag {
