@@ -113,12 +113,14 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 		SDPSemantics: webrtc.SDPSemanticsUnifiedPlanWithFallback,
 	})
 	if err != nil {
+		log.Println("Failed in element.NewPeerConnection", err.Error())
 		return "", err
 	}
 	defer func() {
 		if !WriteHeaderSuccess {
 			err = element.Close()
 			if err != nil {
+				log.Println("Failed in element.Close()", err.Error())
 				log.Println(err)
 			}
 		}
@@ -131,9 +133,11 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 					MimeType: webrtc.MimeTypeH264,
 				}, "pion-rtsp-video", "pion-video")
 				if err != nil {
+					log.Println("Failed in webrtc.NewTrackLocalStaticSample", err.Error())
 					return "", err
 				}
 				if rtpSender, err := peerConnection.AddTrack(track); err != nil {
+					log.Println("Failed in peerConnection.AddTrack", err.Error())
 					return "", err
 				} else {
 					go func() {
@@ -165,9 +169,11 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 				ClockRate: uint32(i2.(av.AudioCodecData).SampleRate()),
 			}, "pion-rtsp-audio", "pion-rtsp-audio")
 			if err != nil {
+				log.Println("Failed in webrtc.NewTrackLocalStaticSample", err.Error())
 				return "", err
 			}
 			if rtpSender, err := peerConnection.AddTrack(track); err != nil {
+				log.Println("Failed in peerConnection.AddTrack(track)", err.Error())
 				return "", err
 			} else {
 				go func() {
@@ -183,6 +189,7 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 		element.streams[int8(i)] = &Stream{track: track, codec: i2}
 	}
 	if len(element.streams) == 0 {
+		log.Println(ErrorNotTrackAvailable)
 		return "", ErrorNotTrackAvailable
 	}
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
@@ -198,20 +205,24 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 	})
 
 	if err = peerConnection.SetRemoteDescription(offer); err != nil {
+		log.Println("Failed in peerConnection.SetRemoteDescription(offer)", err.Error())
 		return "", err
 	}
 	gatherCompletePromise := webrtc.GatheringCompletePromise(peerConnection)
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
+		log.Println("Failed in peerConnection.CreateAnswer(nil)", err.Error())
 		return "", err
 	}
 	if err = peerConnection.SetLocalDescription(answer); err != nil {
+		log.Println("Failed in peerConnection.SetLocalDescription(answer)", err.Error())
 		return "", err
 	}
 	element.pc = peerConnection
 	waitT := time.NewTimer(time.Second * 10)
 	select {
 	case <-waitT.C:
+		log.Println("gatherCompletePromise wait")
 		return "", errors.New("gatherCompletePromise wait")
 	case <-gatherCompletePromise:
 		//Connected
@@ -231,6 +242,7 @@ func (element *Muxer) WritePacket(pkt av.Packet) (err error) {
 		}
 	}()
 	if element.stop {
+		log.Println(ErrorClientOffline)
 		return ErrorClientOffline
 	}
 	if element.status == webrtc.ICEConnectionStateChecking {
@@ -257,6 +269,7 @@ func (element *Muxer) WritePacket(pkt av.Packet) (err error) {
 					err = tmp.track.WriteSample(media.Sample{Data: append([]byte{0, 0, 0, 1}, nalu...), Duration: pkt.Duration})
 				}
 				if err != nil {
+					log.Println("Failed in tmp.track.WriteSample", err.Error())
 					return err
 				}
 			}
@@ -287,6 +300,7 @@ func (element *Muxer) WritePacket(pkt av.Packet) (err error) {
 		if err == nil {
 			WritePacketSuccess = true
 		}
+		log.Println("Failed in tmp.track.WriteSample - 2", err.Error())
 		return err
 	} else {
 		WritePacketSuccess = true
