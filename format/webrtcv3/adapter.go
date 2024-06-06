@@ -72,10 +72,12 @@ func (element *Muxer) NewPeerConnection(configuration webrtc.Configuration) (*we
 	}
 	m := &webrtc.MediaEngine{}
 	if err := m.RegisterDefaultCodecs(); err != nil {
+		log.Println("Failed in m.RegisterDefaultCodecs()", err.Error())
 		return nil, err
 	}
 	i := &interceptor.Registry{}
 	if err := webrtc.RegisterDefaultInterceptors(m, i); err != nil {
+		log.Println("Failed in webrtc.RegisterDefaultInterceptors(m, i)", err.Error())
 		return nil, err
 	}
 	s := webrtc.SettingEngine{}
@@ -88,7 +90,11 @@ func (element *Muxer) NewPeerConnection(configuration webrtc.Configuration) (*we
 		log.Println("Set ICECandidates", element.Options.ICECandidates)
 	}
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithInterceptorRegistry(i), webrtc.WithSettingEngine(s))
-	return api.NewPeerConnection(configuration)
+	p, err := api.NewPeerConnection(configuration)
+	if err != nil {
+		log.Println("Failed in api.NewPeerConnection(configuration)", err.Error())
+	}
+	return p, err
 }
 func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string, error) {
 	var WriteHeaderSuccess bool
