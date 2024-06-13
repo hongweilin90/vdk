@@ -171,6 +171,10 @@ func Parse(content string) (sess Session, medias []Media) {
 							}
 						}
 					}
+					if len(media.Type.String()) == 0 {
+						//set default value H264
+						media.Type = av.H264
+					}
 				}
 
 			}
