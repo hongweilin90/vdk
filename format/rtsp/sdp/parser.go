@@ -91,6 +91,8 @@ func Parse(content string) (sess Session, medias []Media) {
 						if len(keyval) >= 2 {
 							key := keyval[0]
 							switch strings.ToUpper(key) {
+							case "MP4V-ES":
+								media.Type = av.H264
 							case "MPEG4-GENERIC":
 								media.Type = av.AAC
 							case "L16":
@@ -171,12 +173,7 @@ func Parse(content string) (sess Session, medias []Media) {
 							}
 						}
 					}
-					if len(media.Type.String()) == 0 {
-						//set default value H264
-						media.Type = av.H264
-					}
 				}
-
 			}
 
 		}
