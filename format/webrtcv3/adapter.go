@@ -3,6 +3,7 @@ package webrtc
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"log"
 	"time"
@@ -24,13 +25,16 @@ var (
 )
 
 type Muxer struct {
-	streams   map[int8]*Stream
-	status    webrtc.ICEConnectionState
-	stop      bool
-	pc        *webrtc.PeerConnection
-	ClientACK *time.Timer
-	StreamACK *time.Timer
-	Options   Options
+	streams                 map[int8]*Stream
+	status                  webrtc.ICEConnectionState
+	stop                    bool
+	pc                      *webrtc.PeerConnection
+	pd                      chan []byte
+	addIceCandidateCallback func([]byte)
+	stopCh                  chan bool
+	ClientACK               *time.Timer
+	StreamACK               *time.Timer
+	Options                 Options
 }
 type Stream struct {
 	codec av.CodecData
@@ -51,8 +55,15 @@ type Options struct {
 	PortMax uint16
 }
 
-func NewMuxer(options Options) *Muxer {
-	tmp := Muxer{Options: options, ClientACK: time.NewTimer(time.Second * 20), StreamACK: time.NewTimer(time.Second * 20), streams: make(map[int8]*Stream)}
+func NewMuxer(options Options, addIceCandidateCallback func([]byte)) *Muxer {
+	tmp := Muxer{
+		Options:                 options,
+		pd:                      make(chan []byte, 100),
+		addIceCandidateCallback: addIceCandidateCallback,
+		stopCh:                  make(chan bool),
+		ClientACK:               time.NewTimer(time.Second * 20),
+		StreamACK:               time.NewTimer(time.Second * 20),
+		streams:                 make(map[int8]*Stream)}
 	//go tmp.WaitCloser()
 	return &tmp
 }
@@ -218,6 +229,19 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 		log.Println("Failed in peerConnection.SetLocalDescription(answer)", err.Error())
 		return "", err
 	}
+	//
+	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate != nil {
+			data, err := json.Marshal(candidate)
+			if err == nil && data != nil && element.pd != nil {
+				if len(element.pd) < cap(element.pd) {
+					element.pd <- data
+				}
+			} else {
+				log.Printf("error from OnICECandidate:%s", err.Error())
+			}
+		}
+	})
 	element.pc = peerConnection
 	waitT := time.NewTimer(time.Second * 10)
 	select {
@@ -308,6 +332,17 @@ func (element *Muxer) WritePacket(pkt av.Packet) (err error) {
 	}
 }
 
+func (element *Muxer) transmittingCandidate() {
+	for {
+		select {
+		case <-element.stopCh:
+			return
+		case data := <-element.pd:
+			element.addIceCandidateCallback(data)
+		}
+	}
+}
+
 func (element *Muxer) Close() error {
 	element.stop = true
 	if element.pc != nil {
@@ -316,5 +351,6 @@ func (element *Muxer) Close() error {
 			return err
 		}
 	}
+	element.stopCh <- true
 	return nil
 }
