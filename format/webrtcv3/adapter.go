@@ -25,16 +25,16 @@ var (
 )
 
 type Muxer struct {
-	streams                 map[int8]*Stream
-	status                  webrtc.ICEConnectionState
-	stop                    bool
-	pc                      *webrtc.PeerConnection
-	pd                      chan []byte
-	addIceCandidateCallback func([]byte)
-	stopCh                  chan bool
-	ClientACK               *time.Timer
-	StreamACK               *time.Timer
-	Options                 Options
+	streams                map[int8]*Stream
+	status                 webrtc.ICEConnectionState
+	stop                   bool
+	pc                     *webrtc.PeerConnection
+	pd                     chan []byte
+	candidateChangedNotify func([]byte)
+	stopCh                 chan bool
+	ClientACK              *time.Timer
+	StreamACK              *time.Timer
+	Options                Options
 }
 type Stream struct {
 	codec av.CodecData
@@ -55,15 +55,15 @@ type Options struct {
 	PortMax uint16
 }
 
-func NewMuxer(options Options, addIceCandidateCallback func([]byte)) *Muxer {
+func NewMuxer(options Options, candidateChangedNotify func([]byte)) *Muxer {
 	tmp := Muxer{
-		Options:                 options,
-		pd:                      make(chan []byte, 100),
-		addIceCandidateCallback: addIceCandidateCallback,
-		stopCh:                  make(chan bool),
-		ClientACK:               time.NewTimer(time.Second * 20),
-		StreamACK:               time.NewTimer(time.Second * 20),
-		streams:                 make(map[int8]*Stream)}
+		Options:                options,
+		pd:                     make(chan []byte, 100),
+		candidateChangedNotify: candidateChangedNotify,
+		stopCh:                 make(chan bool),
+		ClientACK:              time.NewTimer(time.Second * 20),
+		StreamACK:              time.NewTimer(time.Second * 20),
+		streams:                make(map[int8]*Stream)}
 	//go tmp.WaitCloser()
 	return &tmp
 }
@@ -338,8 +338,23 @@ func (element *Muxer) transmittingCandidate() {
 		case <-element.stopCh:
 			return
 		case data := <-element.pd:
-			element.addIceCandidateCallback(data)
+			element.candidateChangedNotify(data)
 		}
+	}
+}
+
+func (element *Muxer) AddIceCandidate(candidate []byte) error {
+	if candidate != nil {
+		err := element.AddIceCandidate(candidate)
+		if err != nil {
+			log.Println("failed in adding ice candidate", err.Error())
+		} else {
+			log.Println("succeed in adding ice candidate")
+		}
+		return err
+	} else {
+		log.Println("candidate is nil")
+		return errors.New("candidate is nil")
 	}
 }
 
