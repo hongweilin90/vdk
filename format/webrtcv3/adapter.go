@@ -345,7 +345,12 @@ func (element *Muxer) transmittingCandidate() {
 
 func (element *Muxer) AddIceCandidate(candidate []byte) error {
 	if candidate != nil {
-		err := element.AddIceCandidate(candidate)
+		var iceCandidate webrtc.ICECandidateInit
+		err := json.Unmarshal(candidate, &iceCandidate)
+		if err != nil {
+			return err
+		}
+		err = element.pc.AddICECandidate(iceCandidate)
 		if err != nil {
 			log.Println("failed in adding ice candidate", err.Error())
 		} else {
