@@ -64,7 +64,7 @@ func NewMuxer(options Options, candidateChangedNotify func([]byte)) *Muxer {
 		ClientACK:              time.NewTimer(time.Second * 20),
 		StreamACK:              time.NewTimer(time.Second * 20),
 		streams:                make(map[int8]*Stream)}
-	//go tmp.WaitCloser()
+	go tmp.transmittingCandidate()
 	return &tmp
 }
 func (element *Muxer) NewPeerConnection(configuration webrtc.Configuration) (*webrtc.PeerConnection, error) {
@@ -336,8 +336,10 @@ func (element *Muxer) transmittingCandidate() {
 	for {
 		select {
 		case <-element.stopCh:
+			log.Println("Received stop command")
 			return
 		case data := <-element.pd:
+			log.Println("Received candidate and notified peer client")
 			element.candidateChangedNotify(data)
 		}
 	}
