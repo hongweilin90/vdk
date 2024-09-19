@@ -232,7 +232,7 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 	//
 	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
 		if candidate != nil {
-			data, err := json.Marshal(candidate)
+			data, err := json.Marshal(candidate.ToJSON())
 			if err == nil && data != nil && element.pd != nil {
 				if len(element.pd) < cap(element.pd) {
 					element.pd <- data
