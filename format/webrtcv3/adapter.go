@@ -206,6 +206,7 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 		return "", ErrorNotTrackAvailable
 	}
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		log.Println("Peer connection state:", connectionState.String())
 		element.status = connectionState
 		if connectionState == webrtc.ICEConnectionStateDisconnected {
 			element.Close()
@@ -274,6 +275,7 @@ func (element *Muxer) WritePacket(pkt av.Packet) (err error) {
 		}
 	}()
 	if element.stop {
+		WritePacketSuccess = false
 		log.Println(ErrorClientOffline)
 		return ErrorClientOffline
 	}
