@@ -31,6 +31,7 @@ type Muxer struct {
 	pc                     *webrtc.PeerConnection
 	pd                     chan []byte
 	candidateChangedNotify func([]byte)
+	closeCallback          func()
 	stopCh                 chan bool
 	ClientACK              *time.Timer
 	StreamACK              *time.Timer
@@ -55,11 +56,12 @@ type Options struct {
 	PortMax uint16
 }
 
-func NewMuxer(options Options, candidateChangedNotify func([]byte)) *Muxer {
+func NewMuxer(options Options, candidateChangedNotify func([]byte), closeCallback func()) *Muxer {
 	tmp := Muxer{
 		Options:                options,
 		pd:                     make(chan []byte, 100),
 		candidateChangedNotify: candidateChangedNotify,
+		closeCallback:          closeCallback,
 		stopCh:                 make(chan bool),
 		ClientACK:              time.NewTimer(time.Second * 20),
 		StreamACK:              time.NewTimer(time.Second * 20),
@@ -206,6 +208,12 @@ func (element *Muxer) WriteHeader(streams []av.CodecData, sdp64 string) (string,
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		element.status = connectionState
 		if connectionState == webrtc.ICEConnectionStateDisconnected {
+			element.Close()
+		}
+		if connectionState == webrtc.ICEConnectionStateClosed {
+			element.Close()
+		}
+		if connectionState == webrtc.ICEConnectionStateFailed {
 			element.Close()
 		}
 	})
@@ -372,6 +380,9 @@ func (element *Muxer) Close() error {
 		if err != nil {
 			return err
 		}
+	}
+	if element.closeCallback != nil {
+		element.closeCallback()
 	}
 	element.stopCh <- true
 	return nil
